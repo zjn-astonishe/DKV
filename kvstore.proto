@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package kvstore;
+
+// Request message for the Put operation
+message PutRequest {
+    string key = 1;
+    string value = 2;
+}
+
+// Response message for the Put operation
+message PutResponse {
+    bool success = 1;
+}
+
+// Request message for the Get operation
+message GetRequest {
+    string key = 1;
+}
+
+// Response message for the Get operation
+message GetResponse {
+    string value = 1;
+    bool found = 2;
+}
+
+// Request message for the Delete operation
+message DeleteRequest {
+    string key = 1;
+}
+
+// Response message for the Delete operation
+message DeleteResponse {
+    bool success = 1;
+}
+// Heartbeat Request message
+message HeartbeatRequest {}
+
+// Heartbeat Response message
+message HeartbeatResponse {}
+
+// Service definition
+service KVStoreRPC {
+    rpc Put(PutRequest) returns (PutResponse);
+    rpc Get(GetRequest) returns (GetResponse);
+    rpc Del(DeleteRequest) returns (DeleteResponse);
+    rpc SendHeartbeat(HeartbeatRequest) returns (HeartbeatResponse); // New RPC for heartbeat
+}

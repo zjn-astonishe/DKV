@@ -61,8 +61,8 @@ void perform_del(kvstore::KVClient &client, const std::string &key)
 int main()
 {
     std::string server_address("localhost:50051");
-    kvstore::KVClient client1(grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials()));
-    kvstore::KVClient client2(grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials()));
+    kvstore::KVClient client1(grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials()), 10);
+    kvstore::KVClient client2(grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials()), 10);
 
     // 启动多个线程，模拟两个客户端并发操作
     std::thread client1_put_thread1(perform_put, std::ref(client1), "key1", "value1");

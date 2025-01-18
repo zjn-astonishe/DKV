@@ -88,6 +88,22 @@ add_executable(gtest_cache
   ${CMAKE_CURRENT_BINARY_DIR}/kvstore.grpc.pb.cc
 )
 
+add_executable(gtest_stress
+  ${TEST_DIR}/gtest_stress.cpp
+  ${SRC_DIR}/client.cpp
+  ${SRC_DIR}/client_cache.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/kvstore.pb.cc
+  ${CMAKE_CURRENT_BINARY_DIR}/kvstore.grpc.pb.cc
+)
+
+add_executable(gtest_write
+  ${TEST_DIR}/gtest_write.cpp
+  ${SRC_DIR}/client.cpp
+  ${SRC_DIR}/client_cache.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/kvstore.pb.cc
+  ${CMAKE_CURRENT_BINARY_DIR}/kvstore.grpc.pb.cc
+)
+
 set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 
 # 设置头文件搜索路径
@@ -95,20 +111,29 @@ target_include_directories(test_server PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INC
 target_include_directories(test_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
 target_include_directories(gtest_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
 target_include_directories(gtest_cache PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
+target_include_directories(gtest_stress PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
+target_include_directories(gtest_write PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
+
 
 # 链接 gRPC 和 Protobuf 库
 target_link_libraries(test_server gRPC::grpc++ protobuf::libprotobuf fmt::fmt)
 target_link_libraries(test_client gRPC::grpc++ protobuf::libprotobuf fmt::fmt)
 target_link_libraries(gtest_client gRPC::grpc++ protobuf::libprotobuf fmt::fmt gtest_main)
 target_link_libraries(gtest_cache gRPC::grpc++ protobuf::libprotobuf fmt::fmt gtest_main)
+target_link_libraries(gtest_stress gRPC::grpc++ protobuf::libprotobuf fmt::fmt gtest_main)
+target_link_libraries(gtest_write gRPC::grpc++ protobuf::libprotobuf fmt::fmt gtest_main)
 
 # 确保生成的 proto 文件先于可执行文件构建
 add_dependencies(test_server GenerateProto)
 add_dependencies(test_client GenerateProto)
 add_dependencies(gtest_client GenerateProto)
+add_dependencies(gtest_stress GenerateProto)
 add_dependencies(gtest_cache GenerateProto)
+add_dependencies(gtest_write GenerateProto)
 
 enable_testing()
 include(GoogleTest)
 gtest_discover_tests(gtest_client)
 gtest_discover_tests(gtest_cache)
+gtest_discover_tests(gtest_stress)
+gtest_discover_tests(gtest_write)

@@ -47,5 +47,4 @@ service KVStoreRPC {
     rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
     rpc Del(DeleteRequest) returns (DeleteResponse);
-    rpc SendHeartbeat(HeartbeatRequest) returns (HeartbeatResponse); // New RPC for heartbeat
 }

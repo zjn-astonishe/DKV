@@ -27,14 +27,14 @@ namespace kvstore
             if (request->version() > current_version)
             {
                 store_.put(request->key(), request->value(), request->version());
+                response->set_version(request->version());
                 response->set_success(true);
-                response->set_version(current_version);
             }
             else
             {
-                response->set_version(current_version + 1);
+                response->set_version(store_.getVersion(request->key()) + 1);
+                // SPDLOG_INFO("Version: {}", response->version());
                 response->set_success(false);
-                return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, "Stale write detected");
             }
             return grpc::Status::OK;
         }
@@ -69,19 +69,25 @@ namespace kvstore
         // 转发请求给目标节点
         grpc::Status status = stub.Put(&client_context, forward_request, &forward_response);
 
-        if (status.ok() && forward_response.success())
+        if (status.ok())
         {
-            response->set_success(true);
-            return grpc::Status::OK;
+            if (forward_response.success())
+            {
+                response->set_version(forward_response.version());
+                response->set_success(true);
+            }
+            else 
+            {
+                response->set_version(forward_response.version());
+                response->set_success(false);
+            }
         }
         else
         {
             // 转发失败，返回错误
-            response->set_success(false);
-            if (status.error_code() == grpc::StatusCode::FAILED_PRECONDITION)
-                return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, "Stale write detected");
             return grpc::Status(grpc::StatusCode::INTERNAL, "Forwarding request failed");
         }
+        return grpc::Status::OK;
     }
 
     grpc::Status KVStoreServiceImpl::Get(grpc::ServerContext *context, const kvstore::GetRequest *request, kvstore::GetResponse *response)
@@ -139,6 +145,7 @@ namespace kvstore
         if (status.ok() && forward_response.found())
         {
             response->set_value(forward_response.value());
+            // SPDLOG_INFO("Forward Version {}", forward_response.version());
             response->set_version(forward_response.version());
             response->set_found(true);
             return grpc::Status::OK;

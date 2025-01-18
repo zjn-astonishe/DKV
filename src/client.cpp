@@ -5,7 +5,7 @@ namespace kvstore
 {
 
     KVClient::KVClient(std::shared_ptr<grpc::Channel> channel, size_t cache_capacity)
-    : stub_(kvstore::KVStoreRPC::NewStub(channel)), cache_(cache_capacity) {}
+        : stub_(kvstore::KVStoreRPC::NewStub(channel)), cache_(cache_capacity) {}
 
     int64_t KVClient::getVersion()
     {
@@ -28,19 +28,16 @@ namespace kvstore
         grpc::Status status = stub_->Put(&context, request, &response);
         if (status.ok())
         {
-            std::cout << "Put operation successful." << std::endl;
-            cache_.set(key, value, response.version());
-        }
-        else
-        {
-            std::cerr << "Put failed: " << status.error_message() << std::endl;
-            if (status.error_code() == grpc::StatusCode::FAILED_PRECONDITION)
+            if (response.success())
             {
-                // 设置新的版本号
-                {
-                    std::lock_guard<std::mutex> lock(version_mutex);
-                    current_version = response.version() + 1;
-                }
+                std::cout << "Put operation successful." << std::endl;
+                cache_.set(key, value, response.version());
+            }
+            else
+            {
+                std::cerr << "Put failed: " << status.error_message() << std::endl;
+                std::lock_guard<std::mutex> lock(version_mutex);
+                current_version = response.version();
                 std::cout << "Version conflict, please retry with new version: " << current_version << std::endl;
             }
         }

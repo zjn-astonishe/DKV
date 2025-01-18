@@ -20,6 +20,7 @@ namespace kvstore
 
     private:
         KVStore store_;
+        std::mutex store_mutex;
         std::vector<NodeInfo> nodes_map_;
         ConsistencyHash hash_ring_;
     };

@@ -27,15 +27,17 @@ namespace kvstore
     public:
         KVStore(const NodeInfo &node_info);
         ~KVStore();
-        bool put(const std::string &key, const std::string &value);
-        bool get(const std::string &key, std::string &value);
+        bool put(const std::string &key, const std::string &value, int64_t version);
+        bool get(const std::string &key, std::string &value, int64_t &version);
         bool del(const std::string &key);
+
+        int64_t getVersion(const std::string& key);
 
         NodeInfo get_nodeinfo();
 
     private:
         NodeInfo node_info_;
-        std::unordered_map<std::string, std::string> store;
+        std::unordered_map<std::string, std::pair<std::string, int64_t>> store_;
         std::mutex store_mutex;
     };
 

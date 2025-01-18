@@ -6,11 +6,13 @@ package kvstore;
 message PutRequest {
     string key = 1;
     string value = 2;
+    int64 version = 3;
 }
 
 // Response message for the Put operation
 message PutResponse {
-    bool success = 1;
+    int64 version = 1;
+    bool success = 2;
 }
 
 // Request message for the Get operation
@@ -21,7 +23,8 @@ message GetRequest {
 // Response message for the Get operation
 message GetResponse {
     string value = 1;
-    bool found = 2;
+    int64 version = 2;
+    bool found = 3;
 }
 
 // Request message for the Delete operation

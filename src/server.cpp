@@ -18,12 +18,24 @@ namespace kvstore
 
     grpc::Status KVStoreServiceImpl::Put(grpc::ServerContext *context, const kvstore::PutRequest *request, kvstore::PutResponse *response)
     {
+        // std::lock_guard<std::mutex> lock(store_mutex);
         std::string node = hash_ring_.getNode(request->key());
         // 如果当前节点负责存储
         if (node == store_.get_nodeinfo().get_name())
         {
-            store_.put(request->key(), request->value());
-            response->set_success(true);
+            int64_t current_version = store_.getVersion(request->key());
+            if (request->version() > current_version)
+            {
+                store_.put(request->key(), request->value(), request->version());
+                response->set_success(true);
+                response->set_version(current_version);
+            }
+            else
+            {
+                response->set_version(current_version + 1);
+                response->set_success(false);
+                return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, "Stale write detected");
+            }
             return grpc::Status::OK;
         }
         // 如果当前节点不负责存储，则转发请求给其他节点
@@ -49,6 +61,7 @@ namespace kvstore
         kvstore::PutRequest forward_request;
         forward_request.set_key(request->key());
         forward_request.set_value(request->value());
+        forward_request.set_version(request->version());
 
         kvstore::PutResponse forward_response;
         grpc::ClientContext client_context;
@@ -65,24 +78,32 @@ namespace kvstore
         {
             // 转发失败，返回错误
             response->set_success(false);
+            if (status.error_code() == grpc::StatusCode::FAILED_PRECONDITION)
+                return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, "Stale write detected");
             return grpc::Status(grpc::StatusCode::INTERNAL, "Forwarding request failed");
         }
     }
 
     grpc::Status KVStoreServiceImpl::Get(grpc::ServerContext *context, const kvstore::GetRequest *request, kvstore::GetResponse *response)
     {
+        // std::lock_guard<std::mutex> lock(store_mutex);
         std::string node = hash_ring_.getNode(request->key());
         if (node == store_.get_nodeinfo().get_name())
         {
             std::string value;
-            if (store_.get(request->key(), value))
+            int64_t version;
+
+            if (store_.get(request->key(), value, version))
             {
                 response->set_value(value);
+                response->set_version(version);
+                // SPDLOG_INFO("Version: {}", version);
                 response->set_found(true);
             }
             else
             {
                 response->set_found(false);
+                return grpc::Status(grpc::StatusCode::NOT_FOUND, "Key not found");
             }
             return grpc::Status::OK;
         }
@@ -118,6 +139,7 @@ namespace kvstore
         if (status.ok() && forward_response.found())
         {
             response->set_value(forward_response.value());
+            response->set_version(forward_response.version());
             response->set_found(true);
             return grpc::Status::OK;
         }
@@ -125,12 +147,15 @@ namespace kvstore
         {
             // 转发失败，返回错误
             response->set_found(false);
+            if (status.error_code() == grpc::StatusCode::NOT_FOUND)
+                return grpc::Status(grpc::StatusCode::NOT_FOUND, "Key not found");
             return grpc::Status(grpc::StatusCode::INTERNAL, "Forwarding request failed");
         }
     }
 
     grpc::Status KVStoreServiceImpl::Del(grpc::ServerContext *context, const kvstore::DeleteRequest *request, kvstore::DeleteResponse *response)
     {
+        // std::lock_guard<std::mutex> lock(store_mutex);
         std::string node = hash_ring_.getNode(request->key());
         if (node == store_.get_nodeinfo().get_name())
         {
@@ -141,6 +166,7 @@ namespace kvstore
             else
             {
                 response->set_success(false);
+                return grpc::Status(grpc::StatusCode::NOT_FOUND, "Key not found");
             }
             return grpc::Status::OK;
         }
@@ -173,15 +199,20 @@ namespace kvstore
         // 转发请求给目标节点
         grpc::Status status = stub.Del(&client_context, forward_request, &forward_response);
 
+        // SPDLOG_INFO("Success?");
         if (status.ok() && forward_response.success())
         {
+            // SPDLOG_INFO("Success");
             response->set_success(true);
             return grpc::Status::OK;
         }
         else
         {
+            // SPDLOG_INFO("Fail");
             // 转发失败，返回错误
             response->set_success(false);
+            if (status.error_code() == grpc::StatusCode::NOT_FOUND)
+                return grpc::Status(grpc::StatusCode::NOT_FOUND, "Key not found");
             return grpc::Status(grpc::StatusCode::INTERNAL, "Forwarding request failed");
         }
     }

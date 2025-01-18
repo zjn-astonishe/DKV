@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(MyDSMProject VERSION 1.0)
 
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG release-1.12.1  # Optionally pin to a specific version/release
+)
+FetchContent_MakeAvailable(googletest)
+
 # 设置 C++ 标准
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,6 +26,8 @@ set(CMAKE_SKIP_INSTALL_RPATH FALSE)
 find_package(gRPC CONFIG REQUIRED)
 find_package(Protobuf CONFIG REQUIRED)
 find_package(fmt REQUIRED)
+
+
 
 # 添加 proto 文件生成规则
 add_custom_command(
@@ -57,6 +67,23 @@ add_executable(test_server
 add_executable(test_client
   ${TEST_DIR}/test_client.cpp
   ${SRC_DIR}/client.cpp
+  ${SRC_DIR}/client_cache.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/kvstore.pb.cc
+  ${CMAKE_CURRENT_BINARY_DIR}/kvstore.grpc.pb.cc
+)
+
+add_executable(gtest_client
+  ${TEST_DIR}/gtest_client.cpp
+  ${SRC_DIR}/client.cpp
+  ${SRC_DIR}/client_cache.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/kvstore.pb.cc
+  ${CMAKE_CURRENT_BINARY_DIR}/kvstore.grpc.pb.cc
+)
+
+add_executable(gtest_cache
+  ${TEST_DIR}/gtest_cache.cpp
+  ${SRC_DIR}/client.cpp
+  ${SRC_DIR}/client_cache.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/kvstore.pb.cc
   ${CMAKE_CURRENT_BINARY_DIR}/kvstore.grpc.pb.cc
 )
@@ -66,12 +93,22 @@ set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 # 设置头文件搜索路径
 target_include_directories(test_server PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
 target_include_directories(test_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
+target_include_directories(gtest_client PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
+target_include_directories(gtest_cache PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${INCLUDE_DIR})
 
 # 链接 gRPC 和 Protobuf 库
 target_link_libraries(test_server gRPC::grpc++ protobuf::libprotobuf fmt::fmt)
 target_link_libraries(test_client gRPC::grpc++ protobuf::libprotobuf fmt::fmt)
-
+target_link_libraries(gtest_client gRPC::grpc++ protobuf::libprotobuf fmt::fmt gtest_main)
+target_link_libraries(gtest_cache gRPC::grpc++ protobuf::libprotobuf fmt::fmt gtest_main)
 
 # 确保生成的 proto 文件先于可执行文件构建
 add_dependencies(test_server GenerateProto)
 add_dependencies(test_client GenerateProto)
+add_dependencies(gtest_client GenerateProto)
+add_dependencies(gtest_cache GenerateProto)
+
+enable_testing()
+include(GoogleTest)
+gtest_discover_tests(gtest_client)
+gtest_discover_tests(gtest_cache)

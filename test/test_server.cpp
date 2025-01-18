@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     for (int i = 1; i <= node_count; ++i)
     {
         std::string node_name = "node" + std::to_string(i);
-        std::string node_host = "0.0.0.0";
+        std::string node_host = "localhost";
         int node_port = 50050 + i;
         kvstore::NodeInfo node(node_name, node_host + ":" + std::to_string(node_port));
         nodes.push_back(node); // 生成节点名称
